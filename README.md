@@ -52,3 +52,4 @@ Deploy `server/` to any Node host with a persistent disk (the database is the fi
 put it behind HTTPS, point the `internal.e7entertainments.com` DNS record at it, set `TRUST_PROXY=1`, and fill
 in the SMTP settings. Staff then open `https://internal.e7entertainments.com/internal`.
 # e7parks
+# e7parks

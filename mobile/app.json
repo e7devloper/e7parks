@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "E7 Parks",
+    "slug": "e7-parks",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.e7entertainments.parks",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.e7entertainments.parks"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-router",
+      "expo-status-bar",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
+    ],
+    "scheme": "e7parks",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "owner": "e7dev",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "dd5ccaf5-235d-4c7d-bf37-c397555a6e65"
+      }
+    }
+  }
+}

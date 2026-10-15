@@ -1,8 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import { Linking, StyleSheet, Text, type TextInput } from 'react-native';
 import { Button, ErrorText, Field, Screen } from '../../components/ui';
 import { errorMessage, request } from '../../lib/api';
+import { PRIVACY_URL } from '../../lib/config';
+import { space, type, useStyles, type Palette } from '../../lib/theme';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_RE = /^\+?[0-9][0-9\s-]{6,17}$/;
@@ -11,6 +13,7 @@ type Errors = Partial<Record<'name' | 'email' | 'phone' | 'password', string>>;
 
 export default function Register() {
   const router = useRouter();
+  const styles = useStyles(makeStyles);
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -101,6 +104,19 @@ export default function Register() {
         onSubmitEditing={submit}
       />
       <Button title="Send verification code" onPress={submit} loading={busy} />
+      <Text style={styles.footnote}>
+        By creating an account you agree to our{' '}
+        <Text accessibilityRole="link" style={styles.link} onPress={() => Linking.openURL(PRIVACY_URL)}>
+          privacy policy
+        </Text>
+        .
+      </Text>
     </Screen>
   );
 }
+
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    footnote: { ...type.caption, color: c.muted, textAlign: 'center', marginTop: space.lg },
+    link: { color: c.link, fontWeight: '600', textDecorationLine: 'underline' },
+  });

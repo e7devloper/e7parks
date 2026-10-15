@@ -58,4 +58,10 @@ function sendTicketConfirmation(user, ticket) {
   return send({ to: user.email, subject: `We've received your request — ${ticket.ref}`, text, html });
 }
 
-module.exports = { sendOtp, sendTicketConfirmation, esc, smtpConfigured: Boolean(transport) };
+function sendAccountDeleted(user) {
+  const text = `Hi ${user.name},\n\nYour E7 Parks account and the requests you raised with it have been deleted, as you asked.\nIf this wasn't you, please contact us straight away.\n\nE7 Entertainments`;
+  const html = `<p>Hi ${esc(user.name)},</p><p>Your E7 Parks account and the requests you raised with it have been deleted, as you asked.</p><p>If this wasn't you, please contact us straight away.</p><p>E7 Entertainments</p>`;
+  return send({ to: user.email, subject: 'Your E7 Parks account has been deleted', text, html });
+}
+
+module.exports = { sendOtp, sendTicketConfirmation, sendAccountDeleted, esc, smtpConfigured: Boolean(transport) };

@@ -1,4 +1,5 @@
-// Staff-facing ticket dashboard. This is the part meant to live at internal.e7entertainments.com.
+// Built-in staff ticket dashboard, behind the ADMIN_USER / ADMIN_PASSWORD login. The staff web app at
+// internal.e7entertainments.com uses the JSON API in staff.js instead.
 const crypto = require('node:crypto');
 const express = require('express');
 const db = require('./db');
@@ -13,16 +14,21 @@ const safeEqual = (a, b) => {
   return crypto.timingSafeEqual(x, y);
 };
 
+/** True when the staff username and password match. Always false while ADMIN_PASSWORD is unset. */
+function checkAdmin(user, password) {
+  // Evaluate both so a wrong username takes as long as a wrong password.
+  const userOk = safeEqual(user, ADMIN_USER);
+  const passOk = safeEqual(password, ADMIN_PASSWORD);
+  return Boolean(ADMIN_PASSWORD) && typeof user === 'string' && typeof password === 'string' && userOk && passOk;
+}
+
 function basicAuth(req, res, next) {
   if (!ADMIN_PASSWORD) return res.status(503).type('text').send('Set ADMIN_PASSWORD in server/.env to enable the internal dashboard.');
   const [scheme, encoded] = (req.get('authorization') || '').split(' ');
   if (scheme === 'Basic' && encoded) {
     const decoded = Buffer.from(encoded, 'base64').toString();
     const i = decoded.indexOf(':');
-    // Evaluate both so a wrong username takes as long as a wrong password.
-    const userOk = safeEqual(decoded.slice(0, i), ADMIN_USER);
-    const passOk = safeEqual(decoded.slice(i + 1), ADMIN_PASSWORD);
-    if (i > -1 && userOk && passOk) return next();
+    if (i > -1 && checkAdmin(decoded.slice(0, i), decoded.slice(i + 1))) return next();
   }
   res.set('WWW-Authenticate', 'Basic realm="E7 Internal", charset="UTF-8"').status(401).type('text').send('Authentication required.');
 }
@@ -97,8 +103,8 @@ router.get('/', (req, res) => {
 router.post('/tickets/:id/status', sameOrigin, express.urlencoded({ extended: false }), (req, res) => {
   const status = req.body?.status;
   if (!Object.hasOwn(STATUSES, status)) return res.status(400).type('text').send('Unknown status.');
-  db.prepare('UPDATE tickets SET status = ? WHERE id = ?').run(status, Number(req.params.id));
+  db.setTicketStatus(Number(req.params.id), status, { id: null, name: 'Built-in admin' });
   res.redirect(303, req.get('referer') || '/internal');
 });
 
-module.exports = { router };
+module.exports = { router, checkAdmin };

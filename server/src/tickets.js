@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('./db');
 const mailer = require('./mailer');
 const { requireAuth, HttpError } = require('./auth');
+const { postWebhook } = require('./webhook');
 const { PARK_TYPES, TIMELINES, CONTACT_METHODS, CURRENCIES } = require('./catalog');
 
 const str = (v) => (typeof v === 'string' ? v.trim() : '');
@@ -28,23 +29,6 @@ function toTicket(row) {
 function newRef() {
   const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   return `E7-${day}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-}
-
-/** Optionally mirrors the ticket into another internal system (CRM, sheet, etc.). */
-async function pushToWebhook(ticket, user) {
-  const url = process.env.INTERNAL_WEBHOOK_URL;
-  if (!url) return false;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(process.env.INTERNAL_WEBHOOK_TOKEN ? { authorization: `Bearer ${process.env.INTERNAL_WEBHOOK_TOKEN}` } : {}),
-    },
-    body: JSON.stringify({ event: 'ticket.created', ticket, requester: { name: user.name, email: user.email, phone: user.phone } }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) throw new Error(`webhook responded ${res.status}`);
-  return true;
 }
 
 const router = express.Router();
@@ -91,7 +75,10 @@ router.post('/', async (req, res) => {
   const ticket = toTicket(db.prepare('SELECT * FROM tickets WHERE id = ?').get(id));
 
   // The ticket is saved at this point; a mail or webhook failure must not lose it.
-  const [mail, hook] = await Promise.allSettled([mailer.sendTicketConfirmation(req.user, ticket), pushToWebhook(ticket, req.user)]);
+  const [mail, hook] = await Promise.allSettled([
+    mailer.sendTicketConfirmation(req.user, ticket),
+    postWebhook({ event: 'ticket.created', ticket, requester: { name: req.user.name, email: req.user.email, phone: req.user.phone } }),
+  ]);
   if (mail.status === 'rejected') console.error(`[${ticket.ref}] confirmation email failed:`, mail.reason?.message);
   if (hook.status === 'rejected') console.error(`[${ticket.ref}] webhook failed:`, hook.reason?.message);
   const emailSent = mail.status === 'fulfilled' && mail.value === true;

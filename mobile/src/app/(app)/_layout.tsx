@@ -20,6 +20,7 @@ export default function AppLayout() {
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="new-request" options={{ title: 'New request' }} />
+        <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
         <Stack.Screen name="submitted" options={{ title: 'Request sent', headerBackVisible: false, gestureEnabled: false }} />
       </Stack>
     </>

@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const db = require('./db');
 const mailer = require('./mailer');
+const { postWebhook } = require('./webhook');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const OTP_TTL_MIN = 10;
@@ -64,16 +65,46 @@ function requireAuth(req, _res, next) {
   next();
 }
 
+/** Resolves the user when the email and password match, otherwise null. */
+async function checkCredentials(email, password) {
+  const user = findUser(normEmail(email));
+  const ok = await bcrypt.compare(typeof password === 'string' ? password : '', user ? user.password_hash : DUMMY_HASH);
+  return user && ok ? user : null;
+}
+
+/** Permanently removes the account and everything tied to it. The stores require this to be self-service. */
+async function deleteAccount(user) {
+  const refs = db.prepare('SELECT ref FROM tickets WHERE user_id = ?').all(user.id).map((t) => t.ref);
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM tickets WHERE user_id = ?').run(user.id);
+    db.prepare('DELETE FROM otps WHERE email = ?').run(user.email);
+    db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+  // The account is gone at this point; a mail or webhook failure must not undo that.
+  const [mail, hook] = await Promise.allSettled([
+    mailer.sendAccountDeleted(user),
+    // Lets a mirrored CRM purge its copy too.
+    postWebhook({ event: 'account.deleted', requester: { email: user.email }, ticketRefs: refs }),
+  ]);
+  if (mail.status === 'rejected') console.error(`[account ${user.id}] deletion email failed:`, mail.reason?.message);
+  if (hook.status === 'rejected') console.error(`[account ${user.id}] deletion webhook failed:`, hook.reason?.message);
+}
+
+const limiter = rateLimit({
+  windowMs: 15 * 60_000,
+  limit: 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again in a few minutes.', code: 'RATE_LIMITED' },
+});
+
 const router = express.Router();
-router.use(
-  rateLimit({
-    windowMs: 15 * 60_000,
-    limit: 40,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many attempts. Please try again in a few minutes.', code: 'RATE_LIMITED' },
-  })
-);
+router.use(limiter);
 
 router.post('/register', async (req, res) => {
   const name = str(req.body.name);
@@ -139,11 +170,8 @@ router.post('/resend-otp', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const email = normEmail(req.body.email);
-  const password = typeof req.body.password === 'string' ? req.body.password : '';
-  const user = findUser(email);
-  const ok = await bcrypt.compare(password, user ? user.password_hash : DUMMY_HASH);
-  if (!user || !ok) throw new HttpError(401, 'Incorrect email or password.', 'BAD_CREDENTIALS');
+  const user = await checkCredentials(req.body.email, req.body.password);
+  if (!user) throw new HttpError(401, 'Incorrect email or password.', 'BAD_CREDENTIALS');
   if (!user.verified) {
     await issueOtp(user);
     throw new HttpError(403, 'Please verify your email to continue. We sent you a code.', 'EMAIL_NOT_VERIFIED');
@@ -155,4 +183,13 @@ router.get('/me', requireAuth, (req, res) => {
   res.json({ user: publicUser(req.user) });
 });
 
-module.exports = { router, requireAuth, HttpError };
+router.post('/delete-account', requireAuth, async (req, res) => {
+  // 403 rather than 401: the session is fine, so the app must not sign the user out over a mistyped password.
+  if (!(await checkCredentials(req.user.email, req.body.password))) {
+    throw new HttpError(403, 'That password is incorrect.', 'BAD_PASSWORD');
+  }
+  await deleteAccount(req.user);
+  res.json({ deleted: true });
+});
+
+module.exports = { router, requireAuth, HttpError, checkCredentials, deleteAccount, limiter };

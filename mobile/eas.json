@@ -7,13 +7,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://internal.e7entertainments.com"
+        "EXPO_PUBLIC_API_URL": "https://api.e7entertainments.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://internal.e7entertainments.com"
+        "EXPO_PUBLIC_API_URL": "https://api.e7entertainments.com"
       }
     }
   },

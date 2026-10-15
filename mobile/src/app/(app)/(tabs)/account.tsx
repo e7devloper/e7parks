@@ -1,9 +1,12 @@
-import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { Button, Icon, Screen, type IconName } from '../../../components/ui';
 import { useAuth } from '../../../lib/auth';
+import { PRIVACY_URL } from '../../../lib/config';
 import { radius, space, type, usePalette, useStyles, type Palette } from '../../../lib/theme';
 
 export default function Account() {
+  const router = useRouter();
   const c = usePalette();
   const styles = useStyles(makeStyles);
   const { user, signOut } = useAuth();
@@ -40,7 +43,9 @@ export default function Account() {
         ))}
       </View>
       <Text style={styles.note}>The E7 team uses these details to reply to your requests.</Text>
+      <Button title="Privacy policy" variant="text" icon="shield-account-outline" onPress={() => Linking.openURL(PRIVACY_URL)} />
       <Button title="Log out" variant="text" icon="logout" onPress={confirmSignOut} />
+      <Button title="Delete account" variant="text" icon="delete-outline" onPress={() => router.push('/delete-account')} />
     </Screen>
   );
 }

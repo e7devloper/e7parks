@@ -139,7 +139,7 @@ type ButtonProps = {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'text';
+  variant?: 'primary' | 'text' | 'danger';
   icon?: IconName;
 };
 
@@ -148,7 +148,8 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
   const styles = useStyles(makeStyles);
   const text = variant === 'text';
   const off = disabled || loading;
-  const color = text ? c.link : c.onAction;
+  const danger = variant === 'danger';
+  const color = text ? c.link : danger ? c.onDanger : c.onAction;
   return (
     <Pressable
       accessibilityRole="button"
@@ -156,7 +157,13 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
       onPress={onPress}
       disabled={off}
       android_ripple={{ color: text ? c.surfaceAlt : '#00000022' }}
-      style={({ pressed }) => [styles.button, text && styles.buttonText, pressed && styles.pressed, off && styles.disabled]}
+      style={({ pressed }) => [
+        styles.button,
+        text && styles.buttonText,
+        danger && styles.buttonDanger,
+        pressed && styles.pressed,
+        off && styles.disabled,
+      ]}
     >
       {loading ? (
         <ActivityIndicator color={color} />
@@ -288,6 +295,7 @@ const makeStyles = (c: Palette) =>
       overflow: 'hidden',
     },
     buttonText: { backgroundColor: 'transparent', minHeight: TOUCH },
+    buttonDanger: { backgroundColor: c.danger },
     buttonLabel: { ...type.button },
     pressed: { opacity: 0.75 },
     disabled: { opacity: 0.5 },

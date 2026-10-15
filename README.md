@@ -23,7 +23,7 @@ npx expo start
 
 Scan the QR code with Expo Go. The phone and computer must be on the same Wi-Fi; the app finds the server
 on the computer's LAN address automatically. To use a deployed server (or `expo start --tunnel`), set
-`EXPO_PUBLIC_API_URL=https://internal.e7entertainments.com` in `mobile/.env`.
+`EXPO_PUBLIC_API_URL=https://api.e7entertainments.com` in `mobile/.env.local`.
 
 ## Flow
 
@@ -44,12 +44,24 @@ See `server/.env.example`. The important ones:
 | `JWT_SECRET` | Signs sessions. Required. |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | Login for the staff dashboard at `/internal`. |
 | `SMTP_*`, `MAIL_FROM` | Outgoing email. **While `SMTP_HOST` is empty, emails (including OTP codes) are printed in the server terminal instead of being sent.** |
-| `INTERNAL_WEBHOOK_URL` | Optional. Each new ticket is also POSTed there as JSON, for an existing CRM or internal system. |
+| `SUPPORT_EMAIL` | Contact address shown on the public privacy and account deletion pages. |
+| `INTERNAL_WEBHOOK_URL` | Optional. Each new ticket is also POSTed there as JSON (`ticket.created`), for an existing CRM or internal system. Deleting an account sends `account.deleted` with the ticket references to purge. |
 
-## Going live on internal.e7entertainments.com
+## Staff API (`/api/staff`)
 
-Deploy `server/` to any Node host with a persistent disk (the database is the file `server/data/e7parks.db`),
-put it behind HTTPS, point the `internal.e7entertainments.com` DNS record at it, set `TRUST_PROXY=1`, and fill
-in the SMTP settings. Staff then open `https://internal.e7entertainments.com/internal`.
-# e7parks
-# e7parks
+The staff web app at `internal.e7entertainments.com` is a separate project (repo `e7-internal`); the full API
+contract is in that repo's README. Staff have individual accounts (`staff` table) and sign in with
+`POST /api/staff/login` `{ email, password }`, which returns a 12-hour token for `Authorization: Bearer <token>`.
+Admins manage accounts through `/api/staff/team`. Status changes are recorded with who made them
+(`ticket_events`); a status changed there shows in the mobile app the next time the client's requests load.
+
+`ADMIN_USER` / `ADMIN_PASSWORD` is a built-in admin login (enter `ADMIN_USER` in the email field) used to create the
+first accounts. The older built-in dashboard at `/internal` still works with it.
+
+## Going live
+
+The server runs on Railway (project `e7-parks`, service `e7-parks-server`) with the database on a volume mounted
+at `/data` (`DATABASE_FILE=/data/e7parks.db`). Deploy with `railway up` from `server/`.
+
+- `api.e7entertainments.com` points at the Railway service; the mobile store builds use it (`mobile/eas.json`).
+- `internal.e7entertainments.com` is the staff web app, on Vercel (repo `e7-internal`).

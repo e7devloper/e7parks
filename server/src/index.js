@@ -11,6 +11,8 @@ const cors = require('cors');
 const auth = require('./auth');
 const tickets = require('./tickets');
 const internal = require('./internal');
+const staff = require('./staff');
+const pages = require('./pages');
 const { smtpConfigured } = require('./mailer');
 
 const app = express();
@@ -20,12 +22,14 @@ app.disable('x-powered-by');
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/internal', internal.router);
+app.use(pages.router);
 
 const api = express.Router();
 api.use(cors());
 api.use(express.json({ limit: '50kb' }));
 api.use('/auth', auth.router);
 api.use('/tickets', tickets.router);
+api.use('/staff', staff.router);
 app.use('/api', api);
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found.' }));

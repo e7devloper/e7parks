@@ -31,16 +31,8 @@ function newRef() {
   return `E7-${day}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 }
 
-const router = express.Router();
-router.use(requireAuth);
-
-router.get('/', (req, res) => {
-  const rows = db.prepare('SELECT * FROM tickets WHERE user_id = ? ORDER BY id DESC').all(req.user.id);
-  res.json({ tickets: rows.map(toTicket) });
-});
-
-router.post('/', async (req, res) => {
-  const b = req.body;
+/** Shared by the authenticated app endpoint and the public website form. Throws HttpError on bad input. */
+function validateTicketFields(b) {
   const parkTypes = Array.isArray(b.parkTypes) ? [...new Set(b.parkTypes)] : [];
   const budget = Number(b.budget);
   const currency = str(b.currency);
@@ -64,20 +56,29 @@ router.post('/', async (req, res) => {
   if (parkTypes.includes('other') && !notes) throw new HttpError(400, 'Please describe the park you have in mind under additional information.');
   if (notes && notes.length > 2000) throw new HttpError(400, 'Additional information must be under 2000 characters.');
 
+  return { parkTypes, budget, currency, location, siteArea, timeline, contactMethod, notes, expectedVisitors };
+}
+
+/**
+ * Saves a ticket for a user and tries to send the confirmation email and internal webhook.
+ * Shared by the authenticated app endpoint and the public website form; `source` tells the two apart downstream.
+ */
+async function createTicket(user, fields, source) {
+  const { parkTypes, budget, currency, location, siteArea, expectedVisitors, timeline, contactMethod, notes } = fields;
   const { lastInsertRowid } = db
     .prepare(
       `INSERT INTO tickets (ref, user_id, park_types, budget, currency, location, site_area, expected_visitors,
          timeline, contact_method, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(newRef(), req.user.id, JSON.stringify(parkTypes), budget, currency, location, siteArea, expectedVisitors,
+    .run(newRef(), user.id, JSON.stringify(parkTypes), budget, currency, location, siteArea, expectedVisitors,
       timeline, contactMethod, notes, new Date().toISOString());
   const id = Number(lastInsertRowid);
   const ticket = toTicket(db.prepare('SELECT * FROM tickets WHERE id = ?').get(id));
 
   // The ticket is saved at this point; a mail or webhook failure must not lose it.
   const [mail, hook] = await Promise.allSettled([
-    mailer.sendTicketConfirmation(req.user, ticket),
-    postWebhook({ event: 'ticket.created', ticket, requester: { name: req.user.name, email: req.user.email, phone: req.user.phone } }),
+    mailer.sendTicketConfirmation(user, ticket),
+    postWebhook({ event: 'ticket.created', source, ticket, requester: { name: user.name, email: user.email, phone: user.phone } }),
   ]);
   if (mail.status === 'rejected') console.error(`[${ticket.ref}] confirmation email failed:`, mail.reason?.message);
   if (hook.status === 'rejected') console.error(`[${ticket.ref}] webhook failed:`, hook.reason?.message);
@@ -85,7 +86,21 @@ router.post('/', async (req, res) => {
   const webhookSynced = hook.status === 'fulfilled' && hook.value === true;
   db.prepare('UPDATE tickets SET email_sent = ?, webhook_synced = ? WHERE id = ?').run(emailSent ? 1 : 0, webhookSynced ? 1 : 0, id);
 
+  return { ticket, emailSent };
+}
+
+const router = express.Router();
+router.use(requireAuth);
+
+router.get('/', (req, res) => {
+  const rows = db.prepare('SELECT * FROM tickets WHERE user_id = ? ORDER BY id DESC').all(req.user.id);
+  res.json({ tickets: rows.map(toTicket) });
+});
+
+router.post('/', async (req, res) => {
+  const fields = validateTicketFields(req.body);
+  const { ticket, emailSent } = await createTicket(req.user, fields, 'app');
   res.status(201).json({ ticket, emailSent });
 });
 
-module.exports = { router };
+module.exports = { router, toTicket, newRef, validateTicketFields, createTicket };

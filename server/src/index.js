@@ -10,6 +10,7 @@ const express = require('express');
 const cors = require('cors');
 const auth = require('./auth');
 const tickets = require('./tickets');
+const webLeads = require('./web-leads');
 const internal = require('./internal');
 const staff = require('./staff');
 const pages = require('./pages');
@@ -29,6 +30,7 @@ api.use(cors());
 api.use(express.json({ limit: '50kb' }));
 api.use('/auth', auth.router);
 api.use('/tickets', tickets.router);
+api.use('/web-leads', webLeads.router);
 api.use('/staff', staff.router);
 app.use('/api', api);
 

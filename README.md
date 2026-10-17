@@ -48,6 +48,14 @@ See `server/.env.example`. The important ones:
 | `SUPPORT_EMAIL` | Contact address shown on the public privacy and account deletion pages. |
 | `INTERNAL_WEBHOOK_URL` | Optional. Each new ticket is also POSTed there as JSON (`ticket.created`), for an existing CRM or internal system. Deleting an account sends `account.deleted` with the ticket references to purge. |
 
+## Public website form (`/api/web-leads`)
+
+The "Request a Park" form on `e7entertainments.com` (repo `e7-entertainment`) posts straight to `POST /api/web-leads`
+from the browser — no account or login. Body: `{ name, email, phone }` plus the same ticket fields as `POST
+/api/tickets` (see `server/src/tickets.js`'s `validateTicketFields`). It finds or creates a user behind the scenes
+(unverified, a password nobody will ever use) and raises a ticket exactly like the app does, so it shows up on the
+staff dashboard and sends the same confirmation email. Rate limited to 10 requests/hour per IP.
+
 ## Staff API (`/api/staff`)
 
 The staff web app at `internal.e7entertainments.com` is a separate project (repo `e7-internal`); the full API

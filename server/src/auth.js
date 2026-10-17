@@ -192,4 +192,4 @@ router.post('/delete-account', requireAuth, async (req, res) => {
   res.json({ deleted: true });
 });
 
-module.exports = { router, requireAuth, HttpError, checkCredentials, deleteAccount, limiter };
+module.exports = { router, requireAuth, HttpError, checkCredentials, deleteAccount, limiter, EMAIL_RE, PHONE_RE };

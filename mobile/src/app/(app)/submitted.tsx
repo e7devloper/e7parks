@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { TicketCard } from '../../components/ticket';
 import { Button, Icon, Screen } from '../../components/ui';
@@ -23,7 +23,7 @@ export default function Submitted() {
   }, [params.ticket]);
 
   // The one authored moment in the app: the ticket is issued, sliding out from under the header.
-  const issued = useRef(new Animated.Value(0)).current;
+  const [issued] = useState(() => new Animated.Value(0));
   useEffect(() => {
     if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {

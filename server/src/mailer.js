@@ -31,7 +31,18 @@ const transport = resend || (process.env.SMTP_HOST
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+// MAIL_FROM is a no-reply address with no mailbox behind it, so point people at support instead.
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL;
+const footerText = SUPPORT_EMAIL
+  ? `\n\nThis is an automated email, please don't reply to it. For any questions, write to ${SUPPORT_EMAIL}.`
+  : '';
+const footerHtml = SUPPORT_EMAIL
+  ? `<p style="color:#666;font-size:13px">This is an automated email, please don't reply to it. For any questions, write to <a href="mailto:${esc(SUPPORT_EMAIL)}">${esc(SUPPORT_EMAIL)}</a>.</p>`
+  : '';
+
 async function send({ to, subject, text, html }) {
+  text += footerText;
+  html += footerHtml;
   if (!transport) {
     // No email provider configured: print the mail so the flow is usable in development.
     console.log(`\n--- EMAIL (email not configured, not sent) ---\nTo: ${to}\nSubject: ${subject}\n\n${text}\n---------------------------------------------\n`);

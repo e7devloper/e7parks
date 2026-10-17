@@ -43,7 +43,8 @@ See `server/.env.example`. The important ones:
 | --- | --- |
 | `JWT_SECRET` | Signs sessions. Required. |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | Login for the staff dashboard at `/internal`. |
-| `SMTP_*`, `MAIL_FROM` | Outgoing email. **While `SMTP_HOST` is empty, emails (including OTP codes) are printed in the server terminal instead of being sent.** |
+| `RESEND_API_KEY`, `MAIL_FROM` | Outgoing email via [Resend](https://resend.com) (production; Railway Hobby blocks outbound SMTP). `MAIL_FROM` must be on a domain verified in Resend. |
+| `SMTP_*` | Alternative to Resend for local or self-hosted setups. **While both `RESEND_API_KEY` and `SMTP_HOST` are empty, emails (including OTP codes) are printed in the server terminal instead of being sent.** |
 | `SUPPORT_EMAIL` | Contact address shown on the public privacy and account deletion pages. |
 | `INTERNAL_WEBHOOK_URL` | Optional. Each new ticket is also POSTed there as JSON (`ticket.created`), for an existing CRM or internal system. Deleting an account sends `account.deleted` with the ticket references to purge. |
 

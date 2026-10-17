@@ -45,5 +45,5 @@ app.listen(port, () => {
   const lan = Object.values(os.networkInterfaces()).flat().find((i) => i && i.family === 'IPv4' && !i.internal)?.address;
   console.log(`E7 Parks API      http://localhost:${port}/api${lan ? `  (LAN: http://${lan}:${port})` : ''}`);
   console.log(`Internal tickets  http://localhost:${port}/internal`);
-  if (!smtpConfigured) console.log('SMTP not configured: OTP codes and confirmation emails are printed here instead of being sent.');
+  if (!smtpConfigured) console.log('Email not configured (RESEND_API_KEY or SMTP_HOST): OTP codes and confirmation emails are printed here instead of being sent.');
 });

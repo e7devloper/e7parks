@@ -3,7 +3,21 @@ const { PARK_TYPES, TIMELINES, CONTACT_METHODS } = require('./catalog');
 
 const FROM = process.env.MAIL_FROM || 'E7 Entertainments <no-reply@e7entertainments.com>';
 
-const transport = process.env.SMTP_HOST
+// Resend sends over HTTPS, which works on hosts that block outbound SMTP (e.g. Railway Hobby).
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+const resend = RESEND_API_KEY && {
+  async sendMail(mail) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(mail),
+    });
+    if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
+  },
+};
+
+const transport = resend || (process.env.SMTP_HOST
   ? nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT || 587),
@@ -12,15 +26,15 @@ const transport = process.env.SMTP_HOST
         ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
         : undefined,
     })
-  : null;
+  : null);
 
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 async function send({ to, subject, text, html }) {
   if (!transport) {
-    // No SMTP configured: print the mail so the flow is usable in development.
-    console.log(`\n--- EMAIL (SMTP not configured, not sent) ---\nTo: ${to}\nSubject: ${subject}\n\n${text}\n---------------------------------------------\n`);
+    // No email provider configured: print the mail so the flow is usable in development.
+    console.log(`\n--- EMAIL (email not configured, not sent) ---\nTo: ${to}\nSubject: ${subject}\n\n${text}\n---------------------------------------------\n`);
     return false;
   }
   await transport.sendMail({ from: FROM, to, subject, text, html });
